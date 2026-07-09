@@ -1,17 +1,57 @@
 #include <stdio.h>
 #include <stdint.h>
+#include <stdlib.h>
+#include "chip_8.h"
 
 #define INSTRUCTION 2
+#define FONT 0x50
+#define FONTSIZE 80
+#define PROGRAM 0x200
 
+uint8_t font[80] = {
+    0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
+    0x20, 0x60, 0x20, 0x20, 0x70, // 1
+    0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
+    0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
+    0x90, 0x90, 0xF0, 0x10, 0x10, // 4
+    0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
+    0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
+    0xF0, 0x10, 0x20, 0x40, 0x40, // 7
+    0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
+    0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
+    0xF0, 0x90, 0xF0, 0x90, 0x90, // A
+    0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
+    0xF0, 0x80, 0x80, 0x80, 0xF0, // C
+    0xE0, 0x90, 0x90, 0x90, 0xE0, // D
+    0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
+    0xF0, 0x80, 0xF0, 0x80, 0x80  // F
+};
 
-int main(int argc, char** argv) {
-    FILE* file = fopen(argv[1], "r");
-    uint16_t instruction = 0;
-    char *buf;
-    while (1) {
-        fread(buf, INSTRUCTION, 1, file);
-        instruction = buf[0] << 8;
-        instruction |= buf[1];
-        resolve_instruction(instruction);
+void load_to_ram(cpu *cpu, uint8_t *bytes, int size, int start) {
+    for (int i = 0; i < size; i++) {
+        cpu->RAM[start + i] = bytes[i];
     }
 }
+
+int main(int argc, char **argv) {
+    FILE* file = fopen(argv[1], "rb");
+    uint16_t instruction = 0;
+    uint8_t buf[2] = { 0 };
+    cpu cpu = { 0 };
+    screen screen = { 0 };
+    load_to_ram(&cpu, font, FONTSIZE, FONT);
+    uint8_t bytes[] = { 0x60, 0x42, 0x30, 0x42 };
+    int size = sizeof(bytes);
+    load_to_ram(&cpu, bytes, size, PROGRAM);
+    cpu.PC = PROGRAM;
+    uint16_t end = PROGRAM + size;
+    while (cpu.PC < end) {
+        instruction = cpu.RAM[cpu.PC] << 8;
+        instruction |= cpu.RAM[cpu.PC + 1];
+        cpu.PC += 2;
+        resolve_instruction(&cpu, instruction, &screen);
+    }
+    printf("Checking PC: %x", cpu.PC);
+    fclose(file);
+}
+

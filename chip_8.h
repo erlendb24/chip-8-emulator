@@ -4,11 +4,11 @@
 typedef struct cpu {
     uint16_t I;
     uint16_t PC;
-    uint8_t* SP;
+    uint8_t SP;
     uint8_t DT;
     uint8_t ST;
-    uint8_t* v[16];
-    uint16_t* stack[16];
+    uint8_t v[16];
+    uint16_t stack[16];
     uint8_t RAM[4096];
 } cpu;
 
@@ -20,7 +20,10 @@ typedef enum {
     AND,
     XOR,
     CARRY,
-    SUB
+    SUB,
+    SHR,
+    SUBN,
+    SHL = 14
 } reg_ops;
 
-void resolve_instruction(cpu *cpu, uint16_t instruction);
+void resolve_instruction(cpu *cpu, uint16_t instruction, screen* screen);
