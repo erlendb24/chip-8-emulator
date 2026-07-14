@@ -2,11 +2,15 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include "chip_8.h"
+#include "raylib.h"
 
 #define INSTRUCTION 2
 #define FONT 0x50
 #define FONTSIZE 80
 #define PROGRAM 0x200
+#define MAX_ROW 32
+#define MAX_COL 64
+#define PIXEL_UPSCALE 10
 
 uint8_t font[80] = {
     0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
@@ -33,25 +37,80 @@ void load_to_ram(cpu *cpu, uint8_t *bytes, int size, int start) {
     }
 }
 
+void checkerboard_screen(screen_t *screen) {
+    for (int row = 0; row < 32; row++) {
+        for (int col = 0; col < 64; col++) {
+            if (row % 2 == 0) {
+                if (col % 2 == 0) {
+                    (*screen)[col + row * MAX_COL] = 1;
+                }
+            }
+            else if (col % 2 == 1) {
+                (*screen)[col + row * MAX_COL] = 1;
+            }
+        }
+    }
+}
+
+void draw_screen(screen_t *screen) {
+    for (int row = 0; row < MAX_ROW; row++) {
+        for (int col = 0; col < MAX_COL; col++) {
+            if ((*screen)[col + row * MAX_COL]) {
+                DrawRectangle((col * 10), (row * 10), PIXEL_UPSCALE, PIXEL_UPSCALE, BLACK);
+            }
+        }
+    }
+}
+
+
 int main(int argc, char **argv) {
     FILE* file = fopen(argv[1], "rb");
     uint16_t instruction = 0;
     uint8_t buf[2] = { 0 };
     cpu cpu = { 0 };
-    screen screen = { 0 };
+    screen_t screen = { 0 };
+    int screen_width = 640;
+    int screen_height = 320;
     load_to_ram(&cpu, font, FONTSIZE, FONT);
-    uint8_t bytes[] = { 0x60, 0x42, 0x30, 0x42 };
+    uint8_t bytes[] = { 
+	0x00, 0xE0, 0xA2, 0x2A, 0x60, 0x0C, 0x61, 0x08, 0xD0, 0x1F, 0x70, 0x09,
+	0xA2, 0x39, 0xD0, 0x1F, 0xA2, 0x48, 0x70, 0x08, 0xD0, 0x1F, 0x70, 0x04,
+	0xA2, 0x57, 0xD0, 0x1F, 0x70, 0x08, 0xA2, 0x66, 0xD0, 0x1F, 0x70, 0x08,
+	0xA2, 0x75, 0xD0, 0x1F, 0x12, 0x28, 0xFF, 0x00, 0xFF, 0x00, 0x3C, 0x00,
+	0x3C, 0x00, 0x3C, 0x00, 0x3C, 0x00, 0xFF, 0x00, 0xFF, 0xFF, 0x00, 0xFF,
+	0x00, 0x38, 0x00, 0x3F, 0x00, 0x3F, 0x00, 0x38, 0x00, 0xFF, 0x00, 0xFF,
+	0x80, 0x00, 0xE0, 0x00, 0xE0, 0x00, 0x80, 0x00, 0x80, 0x00, 0xE0, 0x00,
+	0xE0, 0x00, 0x80, 0xF8, 0x00, 0xFC, 0x00, 0x3E, 0x00, 0x3F, 0x00, 0x3B,
+	0x00, 0x39, 0x00, 0xF8, 0x00, 0xF8, 0x03, 0x00, 0x07, 0x00, 0x0F, 0x00,
+	0xBF, 0x00, 0xFB, 0x00, 0xF3, 0x00, 0xE3, 0x00, 0x43, 0xE0, 0x00, 0xE0,
+	0x00, 0x80, 0x00, 0x80, 0x00, 0x80, 0x00, 0x80, 0x00, 0xE0, 0x00, 0xE0
+    };
     int size = sizeof(bytes);
     load_to_ram(&cpu, bytes, size, PROGRAM);
     cpu.PC = PROGRAM;
     uint16_t end = PROGRAM + size;
-    while (cpu.PC < end) {
+
+    InitWindow(screen_width, screen_height, "chip-8 emu");
+    SetTargetFPS(60);
+    while (!WindowShouldClose()) {
         instruction = cpu.RAM[cpu.PC] << 8;
         instruction |= cpu.RAM[cpu.PC + 1];
         cpu.PC += 2;
         resolve_instruction(&cpu, instruction, &screen);
+        BeginDrawing();
+        ClearBackground(RAYWHITE);
+        draw_screen(&screen);
+        EndDrawing();
     }
+    CloseWindow();
+    /* while (cpu.PC < end) {
+        instruction = cpu.RAM[cpu.PC] << 8;
+        instruction |= cpu.RAM[cpu.PC + 1];
+        cpu.PC += 2;
+        resolve_instruction(&cpu, instruction, &screen);
+    } 
     printf("Checking PC: %x", cpu.PC);
+    */
     fclose(file);
 }
 

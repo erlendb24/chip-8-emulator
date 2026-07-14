@@ -177,7 +177,7 @@ void set_i_reg(cpu* cpu, uint16_t instruction) {
     cpu->I = address;
 }
 
-void draw(cpu *cpu, uint16_t instruction, screen *screen) {
+void draw(cpu *cpu, uint16_t instruction, screen_t *screen) {
     uint8_t amount_of_rows = get_nibble(instruction);
     uint8_t amount_of_cols = 8;
     uint8_t reg_col = cpu->v[get_x(instruction)];
@@ -188,10 +188,10 @@ void draw(cpu *cpu, uint16_t instruction, screen *screen) {
         uint16_t mask = 0x80;
         for (int col = 0; col < amount_of_cols; col++) {
             if (*byte & mask) {
-                if (*screen[(col + reg_col) % MAX_COL + MAX_COL * ((row + reg_row) % MAX_ROW)] == 1) {
+                if ((*screen)[(col + reg_col) % MAX_COL + MAX_COL * ((row + reg_row) % MAX_ROW)] == 1) {
                     flag = 1;
                 }
-                *screen[col + reg_col + MAX_COL * (row + reg_row)] ^= 1;
+                (*screen)[col + reg_col + MAX_COL * (row + reg_row)] ^= 1;
             }
             mask >>= 1;
         }
@@ -215,7 +215,7 @@ void return_sub(cpu *cpu) {
     cpu->SP--;
 }
 
-void clear(screen* screen) {
+void clear(screen_t *screen) {
     memset(screen, 0, 2048);
 }
 
@@ -311,7 +311,7 @@ void handle_F_instructions(cpu *cpu, uint16_t instruction) {
     }
 }
 
-void resolve_instruction(cpu *cpu, uint16_t instruction, screen *screen) {
+void resolve_instruction(cpu *cpu, uint16_t instruction, screen_t *screen) {
     uint8_t op_code = instruction >> 12;
     reg_ops op = 0;
     uint8_t nibble = get_nibble(instruction);

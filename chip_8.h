@@ -12,7 +12,7 @@ typedef struct cpu {
     uint8_t RAM[4096];
 } cpu;
 
-typedef uint8_t screen[2028];
+typedef uint8_t screen_t[2048];
 
 typedef enum {
     NONE,
@@ -26,4 +26,4 @@ typedef enum {
     SHL = 14
 } reg_ops;
 
-void resolve_instruction(cpu *cpu, uint16_t instruction, screen* screen);
+void resolve_instruction(cpu *cpu, uint16_t instruction, screen_t *screen);
