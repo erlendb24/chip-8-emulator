@@ -9,6 +9,13 @@
 #define MAX_COL 64
 #define MAX_ROW 32
 
+const uint8_t keyboard_lut[16] = {
+    KEY_ONE, KEY_TWO, KEY_THREE, KEY_FOUR,
+    KEY_Q, KEY_W, KEY_E, KEY_R,
+    KEY_A, KEY_S, KEY_D, KEY_F,
+    KEY_Z, KEY_X, KEY_C, KEY_V
+};
+
 uint8_t get_byte(uint16_t instruction) {
     uint16_t byte_mask = 0xFF;
     uint16_t byte = instruction & byte_mask;
@@ -97,17 +104,13 @@ void set_reg(cpu* cpu, uint16_t instruction) {
 }
 
 void set_reg_to_reg(cpu* cpu, uint16_t instruction, reg_ops op) {
-    printf("anyone here\n");
     uint8_t reg_x = get_x(instruction);
     uint8_t reg_y = get_y(instruction);
     uint8_t shl_mask = 0x80;
     uint16_t result = 0;
-    printf("op: %d", op);
     switch (op) {
         case NONE:
-            printf("reg 1 = %x and reg 2 = %x\n", cpu->v[reg_x], cpu->v[reg_y]);
             cpu->v[reg_x] = cpu->v[reg_y];
-            printf("reg 1 = %x and reg 2 = %x\n", cpu->v[reg_x], cpu->v[reg_y]);
             break;
         case OR:
             cpu->v[reg_x] |= cpu->v[reg_y];
@@ -191,7 +194,10 @@ void draw(cpu *cpu, uint16_t instruction, screen_t *screen) {
                 if ((*screen)[(col + reg_col) % MAX_COL + MAX_COL * ((row + reg_row) % MAX_ROW)] == 1) {
                     flag = 1;
                 }
-                (*screen)[col + reg_col + MAX_COL * (row + reg_row)] ^= 1;
+                int result = col + reg_col + MAX_COL * (row + reg_row);
+                if (result > 0 && result < 2047) {
+                    (*screen)[result] ^= 1;
+                }
             }
             mask >>= 1;
         }
@@ -219,9 +225,32 @@ void clear(screen_t *screen) {
     memset(screen, 0, 2048);
 }
 
+int return_lut_index(int target) {
+    for (int i = 0; i < 16; i++) {
+        if (keyboard_lut[i] == target) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+void pressed_or_not_pressed(cpu *cpu, uint16_t instruction) {
+    uint16_t x = get_x(instruction);
+    uint8_t nibble = get_nibble(instruction);
+    if (nibble == 0xE) {
+        if (IsKeyDown(keyboard_lut[cpu->v[x]])) {
+            cpu->PC += 2;
+        }
+    } else {
+        if (!IsKeyDown(keyboard_lut[cpu->v[x]])) {
+            cpu->PC += 2;
+        }
+    }
+}
+
 void set_I(cpu *cpu, uint16_t instruction) {
-    uint16_t reg_x = get_x(instruction);
-    cpu->I += cpu->v[reg_x];
+    uint16_t x = get_x(instruction);
+    cpu->I += cpu->v[x];
 }
 
 void set_I_sprite(cpu *cpu, uint16_t instruction) {
@@ -232,12 +261,22 @@ void set_I_sprite(cpu *cpu, uint16_t instruction) {
 }
 
 void set_reg_to_delay(cpu *cpu, uint16_t instruction) {
-    uint8_t reg_x = get_x(instruction);
-    cpu->v[reg_x] = cpu->DT;
+    uint8_t x = get_x(instruction);
+    cpu->v[x] = cpu->DT;
 }
 
 void store_key_press(cpu *cpu, uint16_t instruction) {
-    // while loop waiting for input
+    uint16_t x = get_x(instruction);
+    uint8_t key = 0;
+    int8_t chip_8_key = 0;
+    while(key == 0) {
+        PollInputEvents();
+        key = GetKeyPressed();
+        chip_8_key = return_lut_index(key);
+        if (chip_8_key >= 0) {
+            cpu->v[x] = chip_8_key;
+        }
+    }
 }
 
 void set_delay_to_reg(cpu *cpu, uint16_t instruction) {
@@ -248,6 +287,15 @@ void set_delay_to_reg(cpu *cpu, uint16_t instruction) {
 void set_sound_to_reg(cpu *cpu, uint16_t instruction) {
     uint8_t reg_x = get_x(instruction);
     cpu->ST = cpu->v[reg_x];
+}
+
+void decrement_timers(cpu *cpu) {
+    if (cpu->ST > 0) {
+        cpu->ST--;
+    }
+    if (cpu->DT > 0) {
+        cpu->DT--;
+    }
 }
 
 void store_bcd(cpu *cpu, uint16_t instruction) {
@@ -315,8 +363,6 @@ void resolve_instruction(cpu *cpu, uint16_t instruction, screen_t *screen) {
     uint8_t op_code = instruction >> 12;
     reg_ops op = 0;
     uint8_t nibble = get_nibble(instruction);
-    uint8_t x = get_x(instruction);
-    uint8_t y = get_y(instruction);
     switch (op_code) {
         case 0:
             if (nibble == 0) {
@@ -366,6 +412,7 @@ void resolve_instruction(cpu *cpu, uint16_t instruction, screen_t *screen) {
             draw(cpu, instruction, screen);
             break;
         case 0xE:
+            pressed_or_not_pressed(cpu, instruction);
             break;
         case 0xF:
             handle_F_instructions(cpu, instruction);

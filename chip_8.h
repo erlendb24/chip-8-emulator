@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdint.h>
 
+extern const uint8_t keyboard_lut[16];
+
 typedef struct cpu {
     uint16_t I;
     uint16_t PC;
@@ -27,3 +29,4 @@ typedef enum {
 } reg_ops;
 
 void resolve_instruction(cpu *cpu, uint16_t instruction, screen_t *screen);
+void decrement_timers(cpu *cpu);
