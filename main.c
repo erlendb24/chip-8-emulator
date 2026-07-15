@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <sys/stat.h>
 #include "chip_8.h"
 #include "raylib.h"
 
@@ -71,23 +72,22 @@ void play_sound(cpu *cpu, Sound beep) {
 }
 
 int main(int argc, char **argv) {
-    //FILE* file = fopen(argv[1], "rb");
+    struct stat st;
+    //
+    FILE* game = fopen(argv[1], "rb");
+    stat(argv[1], &st);
     uint16_t instruction = 0;
-    //uint8_t buf[2] = { 0 };
     cpu cpu = { 0 };
     screen_t screen = { 0 };
     int screen_width = 640;
     int screen_height = 320;
     load_to_ram(&cpu, font, FONTSIZE, FONT);
-    //load_to_ram(&cpu, bytes, size, PROGRAM);
-    FILE *breakout = fopen("breakout.ch8", "rb");
-    fread((cpu.RAM + 0x200), 2, 372, breakout);
+    fread((cpu.RAM + PROGRAM), 2, st.st_size, game);
     cpu.PC = PROGRAM;
-    uint16_t end = PROGRAM + 372 / 2;
 
     InitWindow(screen_width, screen_height, "chip-8 emu");
     InitAudioDevice();
-    Sound beep = LoadSound("beep-02.wav");
+    Sound beep = LoadSound("assets/beep-02.wav");
     SetTargetFPS(60);
     while (!WindowShouldClose()) {
         for (int i = 0; i < 10; i++) {
@@ -104,6 +104,6 @@ int main(int argc, char **argv) {
         EndDrawing();
     }
     CloseWindow();
-    fclose(breakout);
+    fclose(game);
 }
 
